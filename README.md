@@ -5,11 +5,11 @@
 1. 代理： `hexo proxy`通过`Proxifier`和`Shadowsocks`控制网络环境
 2. 博客： 
     * 图片：压缩过大图片，并生成`webp`格式的文件，同步到`Jsdelivr`仓库并发布；
-    * 发布：发布到`Github Page`和`VPS` ;
+    * 发布：发布到`Github Page`和`VPS`机器上 ;
 
 ## 注意
 
-1. 项目只限于Mac使用，主要是因为使用`Applescript`；
+1. 项目只限于Mac使用，主要是因为使用`Applescript`还有一些Mac系统命令；
 2. 项目使用一些第三方工具或者API,请查看依赖列表；
 3. 该项目目前处于开发状态。
 
