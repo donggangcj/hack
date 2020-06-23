@@ -52,7 +52,7 @@ func (o *SyncImageOption) Run(cfg util.BlogConfig) {
 
 	if o.ReleaseEnable {
 		logrus.Info("🚀: release image")
-		ReleaseImageTOCDN(cfg.ImageRepoDir)
+		ReleaseImageTOCDN(cfg.ImageRepoRootDir)
 	}
 }
 
@@ -179,9 +179,9 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 }
 
 //ReleaseImageTOCDN
-func ReleaseImageTOCDN(targetDir string) {
+func ReleaseImageTOCDN(imageCDNRootDir string) {
 	command := exec.Command("/bin/bash", "-c", `git add . && git commit -m "sync" && release-it --ci`)
-	command.Dir = targetDir
+	command.Dir = imageCDNRootDir
 	command.Stdout = os.Stdout
 	command.Run()
 }

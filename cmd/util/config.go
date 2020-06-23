@@ -9,9 +9,10 @@ type Config struct {
 }
 
 type BlogConfig struct {
-	BlogDir       string
-	BlogSourceDir string
-	ImageRepoDir  string
+	BlogDir          string
+	BlogSourceDir    string
+	ImageRepoDir     string
+	ImageRepoRootDir string
 }
 
 func BuildConfigFromFile(fPath string) (*Config, error) {
