@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"hack/cmd/util"
 	"os"
 	"os/exec"
 
@@ -8,14 +9,13 @@ import (
 )
 
 type PublishOption struct {
-	blogDir string
 }
 
 func NewPublishOption() *PublishOption {
 	return &PublishOption{}
 }
 
-func NewPublishCommand() *cobra.Command {
+func NewPublishCommand(cfg util.BlogConfig) *cobra.Command {
 	o := NewPublishOption()
 
 	cmd := &cobra.Command{
@@ -23,15 +23,15 @@ func NewPublishCommand() *cobra.Command {
 		Short: "publish image to internet",
 		Long:  "publish image to internet",
 		Run: func(cmd *cobra.Command, args []string) {
-			o.Run()
+			o.Run(cfg.BlogDir)
 		},
 	}
 	return cmd
 }
 
-func (o *PublishOption) Run() {
+func (o *PublishOption) Run(blogDir string) {
 	command := exec.Command("/bin/bash", "-c", "hexo clean & hexo deploy")
-	command.Dir = o.blogDir
+	command.Dir = blogDir
 	command.Stdout = os.Stdout
 	command.Run()
 }

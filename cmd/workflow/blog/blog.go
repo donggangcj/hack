@@ -23,7 +23,7 @@ func NewBlogCommand(cfg util.BlogConfig) *cobra.Command {
 		},
 	}
 	cmd.AddCommand(NewSyncImage(cfg))
-	cmd.AddCommand(NewPublishCommand())
+	cmd.AddCommand(NewPublishCommand(cfg))
 	return cmd
 }
 

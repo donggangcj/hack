@@ -116,20 +116,6 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 			}
 			defer srcImg.content.Close()
 
-			// Image will be compressed before copied to target dir
-			if o.CompressEnable {
-				if info.Size() > MaxImageSize {
-					// compress image
-					logrus.Infof("♻️: compress image:%s", srcImg.NameWithBlog())
-					err := CompressImageByCommandTool(*srcImg)
-					if err != nil {
-						fmt.Println()
-						return err
-					}
-					// FIXME:whether reopen the image which has been compressed.
-				}
-			}
-
 			// check if blog directory exists
 			blogDir := filepath.Join(targetDir, srcImg.blog)
 			if !dirExists(blogDir) {
@@ -142,6 +128,20 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 
 			targetImage := filepath.Join(targetDir, srcImg.NameWithBlog())
 			if !fileExists(targetImage) || o.Update {
+				// Image will be compressed before copied to target dir
+				if o.CompressEnable {
+					if info.Size() > MaxImageSize {
+						// compress image
+						logrus.Infof("♻️: compress image:%s", srcImg.NameWithBlog())
+						err := CompressImageByCommandTool(*srcImg)
+						if err != nil {
+							fmt.Println()
+							return err
+						}
+						// FIXME:whether reopen the image which has been compressed.
+					}
+				}
+
 				logrus.Infof("🔨: copy image :%s",srcImg.NameWithBlog())
 				_ = os.Remove(targetImage)
 
@@ -171,7 +171,6 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 			//if err = os.Chdir(filepath.Dir(targetImage));err!= nil {
 			//
 			//}
-			logrus.Infoln()
 		}
 		return nil
 	})
