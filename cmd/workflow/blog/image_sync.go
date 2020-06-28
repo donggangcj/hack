@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -48,7 +49,7 @@ func NewSyncImage(cfg util.BlogConfig) *cobra.Command {
 func (o *SyncImageOption) Run(cfg util.BlogConfig) {
 
 	err := o.CopyImgFromDirOfBlogToDirImgCDN(cfg.BlogSourceDir, cfg.ImageRepoDir)
-	PrintErrorToStdErr(err,"err happen when sync image")
+	PrintErrorToStdErr(err, "err happen when sync image")
 
 	if o.ReleaseEnable {
 		logrus.Info("🚀: release image")
@@ -60,6 +61,7 @@ type Image struct {
 	content     *os.File
 	imageFormat ImageType
 	blog        string
+	size        int64
 }
 
 //Name return base name of origin image
@@ -83,7 +85,11 @@ func (i *Image) NameWithBlog() string {
 	return filepath.Join(i.blog, i.NameWithExt())
 }
 
-func NewImage(fPath string, imageType ImageType) (*Image, error) {
+func (i *Image) ToTableColumnString() []string {
+	return []string{i.blog, i.NameWithExt(), ByteCountSI(i.size)}
+}
+
+func NewImage(fPath string, imageType ImageType, size int64) (*Image, error) {
 	open, err := os.Open(fPath)
 	if err != nil {
 		return nil, err
@@ -96,8 +102,25 @@ func NewImage(fPath string, imageType ImageType) (*Image, error) {
 		content:     open,
 		imageFormat: imageType,
 		blog:        blogName,
+		size:        size,
 	}
 	return srcImg, nil
+}
+
+type Images []Image
+
+func (i Images) Print(writer io.Writer) {
+	table := tablewriter.NewWriter(writer)
+	table.SetHeader([]string{"Blog", "Image", "Size"})
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+	//table.SetColumnColor(tablewriter.Colors{tablewriter.BgGreenColor}, tablewriter.Colors{tablewriter.BgBlueColor},
+	//	tablewriter.Colors{tablewriter.BgHiRedColor})
+	for _, image := range i {
+		table.Append(image.ToTableColumnString())
+	}
+	//table.SetFooter([]string{"", "Total", strconv.Itoa(len(i))})
+	table.Render()
 }
 
 type ImageHandler func(image Image)
@@ -109,7 +132,7 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		ok, imageType := IsImage(path)
 		if !info.IsDir() && ok {
-			srcImg, err := NewImage(path, imageType)
+			srcImg, err := NewImage(path, imageType, info.Size())
 			if err != nil {
 				logrus.Warn(err)
 				return nil
@@ -142,7 +165,7 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 					}
 				}
 
-				logrus.Infof("🔨: copy image :%s",srcImg.NameWithBlog())
+				logrus.Infof("🔨: copy image :%s", srcImg.NameWithBlog())
 				_ = os.Remove(targetImage)
 
 				targetImgFile, err := os.Create(targetImage)
@@ -158,7 +181,7 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 				}
 
 				if srcImg.imageFormat != WEBP {
-					logrus.Infof("🔋: generate to webp :%s",targetImage)
+					logrus.Infof("🔋: generate to webp :%s", targetImage)
 					GenerateWebpFormat(targetImage)
 				}
 			}
@@ -175,6 +198,38 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 		return nil
 	})
 	return err
+}
+
+//ListDraftImage list unsynchronized images
+func ListDraftImage(srcDir, targetDir string) []Image {
+	images := make([]Image, 0)
+	filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		ok, imageType := IsImage(path)
+		if !info.IsDir() && ok {
+			srcImg, err := NewImage(path, imageType, info.Size())
+			if err != nil {
+				logrus.Warn(err)
+				return nil
+			}
+			defer srcImg.content.Close()
+
+			// check if blog directory exists
+			blogDir := filepath.Join(targetDir, srcImg.blog)
+			if !dirExists(blogDir) {
+				err := os.MkdirAll(blogDir, 0777)
+				if err != nil {
+					logrus.Errorf("failed create blog dir :%s", err)
+					return nil
+				}
+			}
+			targetImage := filepath.Join(targetDir, srcImg.NameWithBlog())
+			if !fileExists(targetImage) {
+				images = append(images, *srcImg)
+			}
+		}
+		return nil
+	})
+	return images
 }
 
 //ReleaseImageTOCDN
@@ -286,4 +341,18 @@ func dirExists(dirname string) bool {
 		return false
 	}
 	return info.IsDir()
+}
+
+func ByteCountSI(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
 }

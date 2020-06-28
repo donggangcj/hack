@@ -70,7 +70,7 @@ func TestCopyImgFromDirOfBlogToDirImgCDN(t *testing.T) {
 
 func TestCompressImageByCommandTool(t *testing.T) {
 	is := assert.New(t)
-	image, err := NewImage("./testdate/compress/simple.png", PNG)
+	image, err := NewImage("./testdate/compress/simple.png", PNG,0)
 	is.NoError(err)
 
 	err = CompressImageByCommandTool(*image)
@@ -89,4 +89,10 @@ func TestSyncImageOption_Run(t *testing.T) {
 		Update:         false,
 	}
 	o.Run(cfg)
+}
+
+func TestListDraftImage(t *testing.T) {
+	images := ListDraftImage("./testdate/sourcedir", "./testdate/targetdir")
+	i := Images(images)
+	i.Print(os.Stdout)
 }
