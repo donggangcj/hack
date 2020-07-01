@@ -10,8 +10,8 @@ import (
 )
 
 func TestGenerateWebpFormat(t *testing.T) {
-	defer os.Remove("./testdate/imageforwebp/simple.webp")
-	GenerateWebpFormat("./testdate/imageforwebp/simple.png")
+	defer os.Remove("../../testdate/imageforwebp/simple.webp")
+	GenerateWebpFormat("../../testdate/imageforwebp/simple.png")
 }
 
 func TestIsImage(t *testing.T) {
@@ -25,22 +25,22 @@ func TestIsImage(t *testing.T) {
 	}{
 		{
 			name: "true:png",
-			args: args{fPath: "./testdate/sourcedir/blog1/simple.png"},
+			args: args{fPath: "../../testdate/sourcedir/blog1/simple.png"},
 			want: true,
 		},
 		{
 			name: "true:webp",
-			args: args{fPath: "./testdate/sourcedir/blog1/simple.webp"},
+			args: args{fPath: "../../testdate/sourcedir/blog1/simple.webp"},
 			want: true,
 		},
 		{
 			name: "false:text",
-			args: args{fPath: "./testdate/sourcedir/blog1/textfile.txt"},
+			args: args{fPath: "../../testdate/sourcedir/blog1/textfile.txt"},
 			want: false,
 		},
 		{
 			name: "false:textWithPNGSuffix",
-			args: args{fPath: "./testdate/sourcedir/blog1/textfile.png"},
+			args: args{fPath: "../../testdate/sourcedir/blog1/textfile.png"},
 			want: false,
 		},
 	}
@@ -55,22 +55,22 @@ func TestIsImage(t *testing.T) {
 
 func TestCopyImgFromDirOfBlogToDirImgCDN(t *testing.T) {
 	is := assert.New(t)
-	defer os.RemoveAll("./testdate/targetdir/blog1")
+	defer os.RemoveAll("../../testdate/targetdir/blog1")
 	o := &SyncImageOption{
 		CompressEnable: true,
 	}
-	o.CopyImgFromDirOfBlogToDirImgCDN("./testdate/sourcedir", "./testdate/targetdir")
+	o.CopyImgFromDirOfBlogToDirImgCDN("../../testdate/sourcedir", "../../testdate/targetdir")
 
-	_, err := os.Stat(filepath.Join("./testdate/targetdir", "blog1/simple.png"))
+	_, err := os.Stat(filepath.Join("../../testdate/targetdir", "blog1/simple.png"))
 	is.NoError(err)
 
-	_, err = os.Stat(filepath.Join("./testdate/targetdir", "blog1/simple.webp"))
+	_, err = os.Stat(filepath.Join("../../testdate/targetdir", "blog1/simple.webp"))
 	is.NoError(err)
 }
 
 func TestCompressImageByCommandTool(t *testing.T) {
 	is := assert.New(t)
-	image, err := NewImage("./testdate/compress/simple.png", PNG,0)
+	image, err := NewImage("../../testdate/compress/simple.png", PNG,0)
 	is.NoError(err)
 
 	err = CompressImageByCommandTool(*image)
@@ -80,8 +80,8 @@ func TestCompressImageByCommandTool(t *testing.T) {
 func TestSyncImageOption_Run(t *testing.T) {
 	cfg := util.BlogConfig{
 		BlogDir:       "",
-		BlogSourceDir: "./testdate/sourcedir",
-		ImageRepoDir:  "./testdate/targetdir",
+		BlogSourceDir: "../../testdate/sourcedir",
+		ImageRepoDir:  "../../testdate/targetdir",
 	}
 	o := SyncImageOption{
 		CompressEnable: true,
@@ -92,7 +92,7 @@ func TestSyncImageOption_Run(t *testing.T) {
 }
 
 func TestListDraftImage(t *testing.T) {
-	images := ListDraftImage("./testdate/sourcedir", "./testdate/targetdir")
+	images := ListDraftImage("../../testdate/sourcedir", "../../testdate/targetdir")
 	i := Images(images)
 	i.Print(os.Stdout)
 }

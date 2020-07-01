@@ -40,7 +40,7 @@ func (o *PublishOption) Run(blogDir string) {
 			fmt.Println(err)
 		}
 		err = o.SyncToGithubRepo(blogDir, promptString)
-		PrintErrorToStdErr(err,"err happen")
+		PrintErrorToStdErr(err,"error happened")
 	}
 	o.Deploy(blogDir)
 }
@@ -53,7 +53,7 @@ func (o *PublishOption) Deploy(blogDir string) {
 }
 
 func (o *PublishOption) SyncToGithubRepo(blogDir, message string) error{
-	command := exec.Command("/bin/bash", "-c", fmt.Sprintf(`git add . && gcmsg "%s" && git push`, message))
+	command := exec.Command("/bin/bash", "-c", fmt.Sprintf(`git add . && git commit -m "%s" && git push`, message))
 	command.Dir = blogDir
 	command.Stdout = os.Stdout
 	return command.Run()

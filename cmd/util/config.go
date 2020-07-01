@@ -13,6 +13,7 @@ type BlogConfig struct {
 	BlogSourceDir    string
 	ImageRepoDir     string
 	ImageRepoRootDir string
+	TinyPNGToken     string
 }
 
 func BuildConfigFromFile(fPath string) (*Config, error) {

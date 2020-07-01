@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hack/cmd/util"
@@ -22,6 +23,7 @@ const MaxImageSize = 2048000
 type SyncImageOption struct {
 	CompressEnable bool
 	ReleaseEnable  bool
+	TinyPNGEnable  bool
 	// if update is true,the sync command will update images which existed
 	Update bool
 }
@@ -43,12 +45,12 @@ func NewSyncImage(cfg util.BlogConfig) *cobra.Command {
 	cmd.Flags().BoolVar(&o.CompressEnable, "compress", true, "compress image whose size is over 2MB")
 	cmd.Flags().BoolVar(&o.ReleaseEnable, "release", true, "release images from local repo to remote")
 	cmd.Flags().BoolVar(&o.Update, "force-update", false, "update existing images")
+	cmd.Flags().BoolVar(&o.TinyPNGEnable, "tinypng", false, "compress image by tinypng,the image compressed by this way has smaller size but it needs more time")
 	return cmd
 }
 
 func (o *SyncImageOption) Run(cfg util.BlogConfig) {
-
-	err := o.CopyImgFromDirOfBlogToDirImgCDN(cfg.BlogSourceDir, cfg.ImageRepoDir)
+	err := o.CopyImgFromDirOfBlogToDirImgCDN(cfg.BlogSourceDir, cfg.ImageRepoDir, cfg.TinyPNGToken)
 	PrintErrorToStdErr(err, "err happen when sync image")
 
 	if o.ReleaseEnable {
@@ -127,7 +129,7 @@ type ImageHandler func(image Image)
 
 //CopyImgFromDirOfBlogToDirImgCDN copy images of blogs directory to image and process it if `imageHandler` function is not empty;
 //https://opensource.com/article/18/6/copying-files-go
-func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir string, imageHandlers ...ImageHandler) error {
+func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir string, token string, imageHandlers ...ImageHandler) error {
 	logrus.Info("🚀: sync images from blog directory to github cdn directory")
 	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		ok, imageType := IsImage(path)
@@ -156,7 +158,12 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 					if info.Size() > MaxImageSize {
 						// compress image
 						logrus.Infof("♻️: compress image:%s", srcImg.NameWithBlog())
-						err := CompressImageByCommandTool(*srcImg)
+						var err error
+						if o.TinyPNGEnable {
+							err = util.CompressImageByTinyPNGAPI(context.Background(), srcImg.Path(), token)
+						} else {
+							err = CompressImageByCommandTool(*srcImg)
+						}
 						if err != nil {
 							fmt.Println()
 							return err
@@ -254,11 +261,6 @@ func PrintErrorToStdErr(err error, message string) {
 	}
 	fmt.Fprintf(os.Stderr, "%s: %s", message, err)
 	os.Exit(1)
-}
-
-//CompressImageByTinyPNGAPI compress image by the tinypng api.
-func CompressImageByTinyPNGAPI(image Image) {
-
 }
 
 //CompressImageByCommandTool compress image by the local command tool.
