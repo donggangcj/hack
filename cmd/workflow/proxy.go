@@ -5,30 +5,30 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-//ProxyOption
-type ProxyOption struct {
-	On bool
-}
-
 func NewCmdProxy() *cobra.Command {
-	o := &ProxyOption{}
 	cmd := &cobra.Command{
 		Use:   "proxy ",
-		Short: "open or close ShadowsocksX-NG-R8 and Proxifier at same time,make sure those applications have been installed",
+		Short: "open or close ShadowsocksX-NG-R8 and Proxifier at same time",
 		Long:  "open or close ShadowsocksX-NG-R8 and Proxifier at same time",
+	}
+	cmd.AddCommand(newProxyOpen())
+	cmd.AddCommand(newProxyClose())
+	return cmd
+}
+
+func newProxyOpen() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "open",
+		Short: "open ShadowsocksX-NG-R8 and Proxifier",
+		Long:  "open ShadowsocksX-NG-R8 and Proxifier",
 		Run: func(cmd *cobra.Command, args []string) {
-			if o.On {
-				OpenProxySets()
-				return
-			}else{
-				CloseProxySet()
-			}
+			OpenProxySets()
 		},
 	}
-	cmd.Flags().BoolVar(&o.On, "on", true, "")
 	return cmd
 }
 
@@ -47,22 +47,34 @@ func OpenProxySets() {
 		fmt.Fprintf(os.Stdout, "error:%s", output)
 		return
 	}
+	logrus.Info("🔈 proxy is on")
 }
 
+func newProxyClose() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "close",
+		Short: "close ShadowsocksX-NG-R8 and Proxifier",
+		Long:  "close ShadowsocksX-NG-R8 and Proxifier",
+		Run: func(cmd *cobra.Command, args []string) {
+			CloseProxySet()
+		},
+	}
+	return cmd
+}
 func CloseProxySet() {
 	// close proxifier
-	command := exec.Command("osascript","-e",`quit app "Proxifier"`)
+	command := exec.Command("osascript", "-e", `quit app "Proxifier"`)
 	output, err := command.Output()
 	if err != nil {
-		fmt.Fprintf(os.Stdout,"error:%s",output)
+		fmt.Fprintf(os.Stdout, "error:%s", output)
 		return
 	}
 	// close ShadowsocksX-NG-R8
-	command = exec.Command("osascript","-e",`quit app "ShadowsocksX-NG-R8"`)
+	command = exec.Command("osascript", "-e", `quit app "ShadowsocksX-NG-R8"`)
 	output, err = command.Output()
 	if err != nil {
-		fmt.Fprintf(os.Stdout,"error:%s",output)
+		fmt.Fprintf(os.Stdout, "error:%s", output)
 		return
 	}
+	logrus.Info("🔈 proxy is off")
 }
-
