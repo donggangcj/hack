@@ -18,7 +18,7 @@ import (
 )
 
 //MaxImageSize present the max size that a image need to be compress
-const MaxImageSize = 2048000
+const MaxImageSize = 1024000
 
 type SyncImageOption struct {
 	CompressEnable bool
@@ -88,7 +88,7 @@ func (i *Image) NameWithBlog() string {
 }
 
 func (i *Image) ToTableColumnString() []string {
-	return []string{i.blog, i.NameWithExt(), ByteCountSI(i.size)}
+	return []string{i.blog, i.NameWithExt(), util.ByteCountSI(i.size)}
 }
 
 func NewImage(fPath string, imageType ImageType, size int64) (*Image, error) {
@@ -343,18 +343,4 @@ func dirExists(dirname string) bool {
 		return false
 	}
 	return info.IsDir()
-}
-
-func ByteCountSI(b int64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "kMGTPE"[exp])
 }

@@ -7,6 +7,9 @@ import (
 	"net/http"
 	url2 "net/url"
 	"os"
+
+	"github.com/cheggaaa/pb/v3"
+	"github.com/sirupsen/logrus"
 )
 
 type TinyPNGResponse struct {
@@ -52,6 +55,10 @@ func CompressImageByTinyPNGAPI(ctx context.Context, fPath string, token string) 
 	if err != nil {
 		return err
 	}
+	logrus.Infof("🌎 Downloading the compressed image[size:%s]", ByteCountSI(tr.Output.Size))
+	// start new progress bar
+	downloadBar := pb.Full.Start64(tr.Output.Size)
+	downloadBar.SetWriter(os.Stdout)
 	downloadReq, err := http.NewRequestWithContext(ctx, "GET", tr.Output.Url, nil)
 	if err != nil {
 		return err
@@ -64,6 +71,7 @@ func CompressImageByTinyPNGAPI(ctx context.Context, fPath string, token string) 
 	defer downloadRes.Body.Close()
 	originFileAgain, err := os.OpenFile(fPath, os.O_WRONLY|os.O_TRUNC, 0666)
 	defer originFileAgain.Close()
-	_, err = io.Copy(originFileAgain, downloadRes.Body)
+	_, err = io.Copy(originFileAgain, downloadBar.NewProxyReader(downloadRes.Body))
+	downloadBar.Finish()
 	return err
 }
