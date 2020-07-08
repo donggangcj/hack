@@ -2,6 +2,7 @@ package blog
 
 import (
 	"hack/cmd/util"
+	"hack/pkg"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,7 +47,7 @@ func TestIsImage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := IsImage(tt.args.fPath); got != tt.want {
+			if got, _ := pkg.IsImage(tt.args.fPath); got != tt.want {
 				t.Errorf("IsImage() = %v, want %v", got, tt.want)
 			}
 		})
@@ -59,7 +60,7 @@ func TestCopyImgFromDirOfBlogToDirImgCDN(t *testing.T) {
 	o := &SyncImageOption{
 		CompressEnable: true,
 	}
-	o.CopyImgFromDirOfBlogToDirImgCDN("../../testdate/sourcedir", "../../testdate/targetdir")
+	o.CopyImgFromDirOfBlogToDirImgCDN("../../testdate/sourcedir", "../../testdate/targetdir","rwzrDC0wQxj2ztC2RCsfRWT17tvV9h63")
 
 	_, err := os.Stat(filepath.Join("../../testdate/targetdir", "blog1/simple.png"))
 	is.NoError(err)
@@ -70,10 +71,10 @@ func TestCopyImgFromDirOfBlogToDirImgCDN(t *testing.T) {
 
 func TestCompressImageByCommandTool(t *testing.T) {
 	is := assert.New(t)
-	image, err := NewImage("../../testdate/compress/simple.png", PNG,0)
+	image, err := pkg.NewImage("../../testdate/compress/simple.png", pkg.PNG)
 	is.NoError(err)
 
-	err = CompressImageByCommandTool(*image)
+	err = pkg.CompressImageByCommandTool(*image)
 	is.NoError(err)
 }
 
@@ -93,6 +94,6 @@ func TestSyncImageOption_Run(t *testing.T) {
 
 func TestListDraftImage(t *testing.T) {
 	images := ListDraftImage("../../testdate/sourcedir", "../../testdate/targetdir")
-	i := Images(images)
+	i := pkg.Images(images)
 	i.Print(os.Stdout)
 }

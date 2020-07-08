@@ -2,17 +2,15 @@ package blog
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"hack/cmd/util"
+	"hack/pkg"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/olekukonko/tablewriter"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,9 +19,10 @@ import (
 const MaxImageSize = 1024000
 
 type SyncImageOption struct {
-	CompressEnable bool
-	ReleaseEnable  bool
-	TinyPNGEnable  bool
+	CompressEnable  bool
+	ReleaseEnable   bool
+	TinyPNGEnable   bool
+	AsciinemaEnable bool
 	// if update is true,the sync command will update images which existed
 	Update bool
 }
@@ -46,6 +45,7 @@ func NewSyncImage(cfg util.BlogConfig) *cobra.Command {
 	cmd.Flags().BoolVar(&o.ReleaseEnable, "release", true, "release images from local repo to remote")
 	cmd.Flags().BoolVar(&o.Update, "force-update", false, "update existing images")
 	cmd.Flags().BoolVar(&o.TinyPNGEnable, "tinypng", false, "compress image by tinypng,the image compressed by this way has smaller size but it needs more time")
+	cmd.Flags().BoolVar(&o.AsciinemaEnable, "asciinema", false, "sync asciinema files of blog")
 	return cmd
 }
 
@@ -59,90 +59,23 @@ func (o *SyncImageOption) Run(cfg util.BlogConfig) {
 	}
 }
 
-type Image struct {
-	content     *os.File
-	imageFormat ImageType
-	blog        string
-	size        int64
-}
-
-//Name return base name of origin image
-func (i *Image) Name() string {
-	return strings.TrimSuffix(filepath.Base(i.content.Name()), filepath.Ext(i.content.Name()))
-}
-
-func (i *Image) Path() string {
-	return i.content.Name()
-}
-
-func (i *Image) PathWithWEBPExt() string {
-	return strings.TrimSuffix(i.content.Name(), filepath.Ext(i.content.Name())) + ".webp"
-}
-
-func (i *Image) NameWithExt() string {
-	return filepath.Base(i.content.Name())
-}
-
-func (i *Image) NameWithBlog() string {
-	return filepath.Join(i.blog, i.NameWithExt())
-}
-
-func (i *Image) ToTableColumnString() []string {
-	return []string{i.blog, i.NameWithExt(), util.ByteCountSI(i.size)}
-}
-
-func NewImage(fPath string, imageType ImageType, size int64) (*Image, error) {
-	open, err := os.Open(fPath)
-	if err != nil {
-		return nil, err
-	}
-	//defer open.Close()
-
-	dirs := strings.Split(filepath.Dir(fPath), "/")
-	blogName := dirs[len(dirs)-1]
-	srcImg := &Image{
-		content:     open,
-		imageFormat: imageType,
-		blog:        blogName,
-		size:        size,
-	}
-	return srcImg, nil
-}
-
-type Images []Image
-
-func (i Images) Print(writer io.Writer) {
-	table := tablewriter.NewWriter(writer)
-	table.SetHeader([]string{"Blog", "Image", "Size"})
-	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
-	//table.SetColumnColor(tablewriter.Colors{tablewriter.BgGreenColor}, tablewriter.Colors{tablewriter.BgBlueColor},
-	//	tablewriter.Colors{tablewriter.BgHiRedColor})
-	for _, image := range i {
-		table.Append(image.ToTableColumnString())
-	}
-	//table.SetFooter([]string{"", "Total", strconv.Itoa(len(i))})
-	table.Render()
-}
-
-type ImageHandler func(image Image)
+type ImageHandler func(image pkg.Image)
 
 //CopyImgFromDirOfBlogToDirImgCDN copy images of blogs directory to image and process it if `imageHandler` function is not empty;
 //https://opensource.com/article/18/6/copying-files-go
 func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir string, token string, imageHandlers ...ImageHandler) error {
 	logrus.Info("🚀: sync images from blog directory to github cdn directory")
 	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		ok, imageType := IsImage(path)
+		ok, imageType := pkg.IsImage(path)
 		if !info.IsDir() && ok {
-			srcImg, err := NewImage(path, imageType, info.Size())
+			srcImg, err := pkg.NewImage(path, imageType)
 			if err != nil {
 				logrus.Warn(err)
 				return nil
 			}
-			defer srcImg.content.Close()
 
 			// check if blog directory exists
-			blogDir := filepath.Join(targetDir, srcImg.blog)
+			blogDir := filepath.Join(targetDir, srcImg.Blog)
 			if !dirExists(blogDir) {
 				err := os.MkdirAll(blogDir, 0777)
 				if err != nil {
@@ -160,9 +93,9 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 						logrus.Infof("♻️: compress image:%s", srcImg.NameWithBlog())
 						var err error
 						if o.TinyPNGEnable {
-							err = util.CompressImageByTinyPNGAPI(context.Background(), srcImg.Path(), token)
+							err = util.CompressImageByTinyPNGAPI(context.Background(), srcImg.Path, token)
 						} else {
-							err = CompressImageByCommandTool(*srcImg)
+							err = pkg.CompressImageByCommandTool(*srcImg)
 						}
 						if err != nil {
 							fmt.Println()
@@ -173,21 +106,13 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 				}
 
 				logrus.Infof("🔨: copy image :%s", srcImg.NameWithBlog())
-				_ = os.Remove(targetImage)
-
-				targetImgFile, err := os.Create(targetImage)
+				err := CopyFile(srcImg.Path, targetImage)
 				if err != nil {
-					logrus.Warn(err)
-					return nil
-				}
-				defer targetImgFile.Close()
-				_, err = io.Copy(targetImgFile, srcImg.content)
-				if err != nil {
-					logrus.Warn(err)
+					logrus.Errorf("failed copy file from %s to %s: %s", srcImg.Path, targetImage, err)
 					return nil
 				}
 
-				if srcImg.imageFormat != WEBP {
+				if srcImg.ImageFormat != pkg.WEBP {
 					logrus.Infof("🔋: generate to webp :%s", targetImage)
 					GenerateWebpFormat(targetImage)
 				}
@@ -202,41 +127,35 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 			//
 			//}
 		}
-		return nil
-	})
-	return err
-}
+		if o.AsciinemaEnable {
+			if IsAsciinema(path) {
+				dirs := strings.Split(filepath.Dir(path), "/")
+				blogName := dirs[len(dirs)-1]
 
-//ListDraftImage list unsynchronized images
-func ListDraftImage(srcDir, targetDir string) []Image {
-	images := make([]Image, 0)
-	filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		ok, imageType := IsImage(path)
-		if !info.IsDir() && ok {
-			srcImg, err := NewImage(path, imageType, info.Size())
-			if err != nil {
-				logrus.Warn(err)
-				return nil
-			}
-			defer srcImg.content.Close()
-
-			// check if blog directory exists
-			blogDir := filepath.Join(targetDir, srcImg.blog)
-			if !dirExists(blogDir) {
-				err := os.MkdirAll(blogDir, 0777)
-				if err != nil {
-					logrus.Errorf("failed create blog dir :%s", err)
-					return nil
+				blogDir := filepath.Join(targetDir, blogName)
+				if !dirExists(blogDir) {
+					err := os.MkdirAll(blogDir, 0777)
+					if err != nil {
+						logrus.Errorf("failed create blog dir :%s", err)
+						return nil
+					}
 				}
-			}
-			targetImage := filepath.Join(targetDir, srcImg.NameWithBlog())
-			if !fileExists(targetImage) {
-				images = append(images, *srcImg)
+
+				targetFile := filepath.Join(blogDir, filepath.Base(path))
+				if !fileExists(targetFile) {
+					logrus.Infof("🔨: copy asciinema :%s", filepath.Join(blogName, filepath.Base(path)))
+					err := CopyFile(path, targetFile)
+					if err != nil {
+						logrus.Errorf("failed copy asciinema file: %s", err)
+						return nil
+					}
+				}
+
 			}
 		}
 		return nil
 	})
-	return images
+	return err
 }
 
 //ReleaseImageTOCDN
@@ -263,66 +182,8 @@ func PrintErrorToStdErr(err error, message string) {
 	os.Exit(1)
 }
 
-//CompressImageByCommandTool compress image by the local command tool.
-func CompressImageByCommandTool(image Image) error {
-	var tool string
-	switch image.imageFormat {
-	case PNG:
-		tool = "optipng"
-	case JPEG:
-		tool = "jpegtopnm"
-	default:
-		tool = ""
-	}
-	if tool == "" {
-		logrus.Errorf("not support image type:%s", image.imageFormat)
-		return errors.New("nonsupport image type")
-	}
-	cmd := exec.Command(tool, image.Path())
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type ImageType string
-
-const (
-	WindowsIcon   ImageType = "image/x-icon"
-	WindowsCursor ImageType = "image/x-icon"
-	BMPImage      ImageType = "image/bmp"
-	GIF           ImageType = "image/gif"
-	WEBP          ImageType = "image/webp"
-	PNG           ImageType = "image/png"
-	JPEG          ImageType = "image/jpeg"
-)
-
-var ValidateImageType = []ImageType{
-	WindowsIcon, WindowsCursor, BMPImage, GIF, WEBP, PNG, JPEG,
-}
-
-// IsImage determine whether a file is a image
-// https://stackoverflow.com/questions/25959386/how-to-check-if-a-file-is-a-valid-image
-func IsImage(fPath string) (bool, ImageType) {
-	open, err := os.Open(fPath)
-	if err != nil {
-		return false, ""
-	}
-	defer open.Close()
-
-	buffer := make([]byte, 512)
-	_, err = open.Read(buffer)
-	if err != nil {
-		return false, ""
-	}
-	contentType := http.DetectContentType(buffer)
-	for _, imageType := range ValidateImageType {
-		if contentType == string(imageType) {
-			return true, imageType
-		}
-	}
-	return false, ""
+func IsAsciinema(fPath string) bool {
+	return strings.HasSuffix(fPath, ".cast")
 }
 
 // fileExists checks if a file exists and is not a directory before we
@@ -343,4 +204,25 @@ func dirExists(dirname string) bool {
 		return false
 	}
 	return info.IsDir()
+}
+
+func CopyFile(sourceFile, targetFile string) error {
+	_ = os.Remove(targetFile)
+
+	open, err := os.Open(sourceFile)
+	if err != nil {
+		return nil
+	}
+	defer open.Close()
+
+	targetImgFile, err := os.Create(targetFile)
+	if err != nil {
+		return err
+	}
+	defer targetImgFile.Close()
+	_, err = io.Copy(targetImgFile, open)
+	if err != nil {
+		return err
+	}
+	return nil
 }

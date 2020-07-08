@@ -15,5 +15,6 @@ func NewBlogCommand(cfg util.BlogConfig) *cobra.Command {
 	cmd.AddCommand(NewSyncImage(cfg))
 	cmd.AddCommand(NewPublishCommand(cfg))
 	cmd.AddCommand(NewImageScan(cfg))
+	cmd.AddCommand(NewUnsynchronizedAsciinemas(cfg))
 	return cmd
 }

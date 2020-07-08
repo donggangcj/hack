@@ -21,3 +21,4 @@ func ValidateEmptyInput(input string) error {
 	}
 	return nil
 }
+
