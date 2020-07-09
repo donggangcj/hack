@@ -128,7 +128,7 @@ func (o *SyncImageOption) CopyImgFromDirOfBlogToDirImgCDN(srcDir, targetDir stri
 			//}
 		}
 		if o.AsciinemaEnable {
-			if IsAsciinema(path) {
+			if pkg.IsAsciinema(path) {
 				dirs := strings.Split(filepath.Dir(path), "/")
 				blogName := dirs[len(dirs)-1]
 
@@ -182,9 +182,7 @@ func PrintErrorToStdErr(err error, message string) {
 	os.Exit(1)
 }
 
-func IsAsciinema(fPath string) bool {
-	return strings.HasSuffix(fPath, ".cast")
-}
+
 
 // fileExists checks if a file exists and is not a directory before we
 // try using it to prevent further errors.

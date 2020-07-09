@@ -5,6 +5,7 @@ import (
 	"hack/pkg"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -32,7 +33,7 @@ func RunUnsynchronized(cfg util.BlogConfig) {
 func ListDraftAsciinemas(srcDir, targetDir string) []pkg.Asciinema {
 	images := make([]pkg.Asciinema, 0)
 	filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		ok := IsAsciinema(path)
+		ok :=pkg.IsAsciinema(path)
 		if !info.IsDir() && ok {
 			srcAscii, err := pkg.NewAsciinema(path)
 			if err != nil {
@@ -58,3 +59,4 @@ func ListDraftAsciinemas(srcDir, targetDir string) []pkg.Asciinema {
 	})
 	return images
 }
+

@@ -50,3 +50,7 @@ func (a Asciinemas) Print(writer io.Writer) {
 	table.Render()
 }
 
+func IsAsciinema(fPath string) bool {
+	return strings.HasSuffix(fPath, ".cast")
+}
+
