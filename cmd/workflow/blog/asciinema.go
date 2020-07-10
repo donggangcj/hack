@@ -5,7 +5,6 @@ import (
 	"hack/pkg"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
