@@ -18,4 +18,5 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.6.1
 	gopkg.in/ini.v1 v1.57.0 // indirect
+	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 )

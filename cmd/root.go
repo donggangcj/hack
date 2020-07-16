@@ -27,6 +27,7 @@ func Register() {
 
 	rootCmd.AddCommand(workflow.NewCmdProxy())
 	rootCmd.AddCommand(blog.NewBlogCommand(cfg.BlogConfig))
+	rootCmd.AddCommand(NewCompletionCommand())
 }
 
 func Execute() {

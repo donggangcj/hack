@@ -70,6 +70,9 @@ func CompressImageByTinyPNGAPI(ctx context.Context, fPath string, token string) 
 	}
 	defer downloadRes.Body.Close()
 	originFileAgain, err := os.OpenFile(fPath, os.O_WRONLY|os.O_TRUNC, 0666)
+	if err!= nil {
+		return err
+	}
 	defer originFileAgain.Close()
 	_, err = io.Copy(originFileAgain, downloadBar.NewProxyReader(downloadRes.Body))
 	downloadBar.Finish()
