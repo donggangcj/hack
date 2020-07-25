@@ -9,32 +9,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type ProxyOption struct {
+	ssr bool
+}
+
 func NewCmdProxy() *cobra.Command {
+	o := ProxyOption{}
 	cmd := &cobra.Command{
 		Use:   "proxy ",
-		Short: "open or close ShadowsocksX-NG-R8 and Proxifier at same time",
-		Long:  "open or close ShadowsocksX-NG-R8 and Proxifier at same time",
+		Short: "Open proxy software",
+		Long:  "Close proxy software",
 	}
-	cmd.AddCommand(newProxyOpen())
-	cmd.AddCommand(newProxyClose())
+	cmd.Flags().BoolVar(&o.ssr, "ssr", false, "use SSR to replace V2ray")
+	cmd.AddCommand(newProxyOpen(o))
+	cmd.AddCommand(newProxyClose(o))
 	return cmd
 }
 
-func newProxyOpen() *cobra.Command {
+func newProxyOpen(option ProxyOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "open",
 		Short: "open ShadowsocksX-NG-R8 and Proxifier",
 		Long:  "open ShadowsocksX-NG-R8 and Proxifier",
 		Run: func(cmd *cobra.Command, args []string) {
-			OpenProxySets()
+			OpenProxySets(option.ssr)
 		},
 	}
 	return cmd
 }
 
-func OpenProxySets() {
+func OpenProxySets(ssr bool) {
 	// open shadowsocksX-NG-R8
-	command := exec.Command("open", "-a", `ShadowsocksX-NG-R8`)
+	proxyType := "V2rayU"
+	if ssr  {
+		proxyType = "ShadowsocksX-NG-R8"
+	}
+	command := exec.Command("open", "-a", proxyType)
 	output, err := command.Output()
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "error:%s", output)
@@ -50,18 +60,18 @@ func OpenProxySets() {
 	logrus.Info("🔈 proxy is on")
 }
 
-func newProxyClose() *cobra.Command {
+func newProxyClose(option ProxyOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close",
 		Short: "close ShadowsocksX-NG-R8 and Proxifier",
 		Long:  "close ShadowsocksX-NG-R8 and Proxifier",
 		Run: func(cmd *cobra.Command, args []string) {
-			CloseProxySet()
+			CloseProxySet(option.ssr)
 		},
 	}
 	return cmd
 }
-func CloseProxySet() {
+func CloseProxySet(ssr bool) {
 	// close proxifier
 	command := exec.Command("osascript", "-e", `quit app "Proxifier"`)
 	output, err := command.Output()
@@ -70,7 +80,11 @@ func CloseProxySet() {
 		return
 	}
 	// close ShadowsocksX-NG-R8
-	command = exec.Command("osascript", "-e", `quit app "ShadowsocksX-NG-R8"`)
+	proxyType := "V2rayU"
+	if ssr  {
+		proxyType = "ShadowsocksX-NG-R8"
+	}
+	command = exec.Command("osascript", "-e", fmt.Sprintf(`quit app "%s"`, proxyType))
 	output, err = command.Output()
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "error:%s", output)
