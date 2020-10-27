@@ -20,7 +20,7 @@ func NewCmdProxy() *cobra.Command {
 		Short: "Open proxy software",
 		Long:  "Close proxy software",
 	}
-	cmd.Flags().BoolVar(&o.ssr, "ssr", false, "use SSR to replace V2ray")
+	cmd.PersistentFlags().BoolVar(&o.ssr, "ssr", false, "use SSR to replace V2ray")
 	cmd.AddCommand(newProxyOpen(o))
 	cmd.AddCommand(newProxyClose(o))
 	return cmd

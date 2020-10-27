@@ -23,8 +23,8 @@ func NewPublishCommand(cfg util.BlogConfig) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "publish",
-		Short: "publish image to internet",
-		Long:  "publish image to internet",
+		Short: "publish blog to internet",
+		Long:  "publish blog to internet",
 		Run: func(cmd *cobra.Command, args []string) {
 			o.Run(cfg.BlogDir)
 		},
